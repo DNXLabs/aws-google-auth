@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# -*- coding: utf8 -*-
+# -*- coding: utf-8 -*-
 from __future__ import print_function
 
 import base64
@@ -248,12 +248,12 @@ class Google:
 
         response_page = BeautifulSoup(sess.text, 'html.parser')
         error = response_page.find(class_='error-msg')
-        cap = response_page.find('input', {'name': 'logincaptcha'})
+        cap = response_page.find('input', {'name': 'identifier-captcha-input'})
 
         # Were there any errors logging in? Could be invalid username or password
         # There could also sometimes be a Captcha, which means Google thinks you,
         # or someone using the same outbound IP address as you, is a bot.
-        if error is not None:
+        if error is not None and cap is None:
             raise ExpectedGoogleException('Invalid username or password')
 
         if "signin/rejected" in sess.url:
@@ -363,11 +363,12 @@ class Google:
         payload['Passwd'] = self.config.password
 
         # Get all captcha challenge tokens and urls
-        captcha_container = response_page.find('div', {'class': 'captcha-container'})
-        captcha_logintoken = captcha_container.find('input', {'name': 'logintoken'}).get('value')
-        captcha_url = captcha_container.find('input', {'name': 'url'}).get('value')
-        captcha_logintoken_audio = captcha_container.find('input', {'name': 'logintoken_audio'}).get('value')
-        captcha_url_audio = captcha_container.find('input', {'name': 'url_audio'}).get('value')
+        captcha_container = response_page.find('div', {'id': 'identifier-captcha'})
+        captcha_logintoken = captcha_container.find('input', {'id': 'identifier-token'}).get('value')
+        captcha_img = captcha_container.find('div', {'class': 'captcha-img'})
+        captcha_url = "https://accounts.google.com" + captcha_img.find('img').get('src')
+        captcha_logintoken_audio = None
+        captcha_url_audio = None
 
         open_image = True
 
@@ -393,13 +394,15 @@ class Google:
             captcha_input = input("Captcha (case insensitive): ") or None
 
         # Update the payload
-        payload['logincaptcha'] = captcha_input
-        payload['logintoken'] = captcha_logintoken
+        payload['identifier-captcha-input'] = captcha_input
+        payload['identifier-token'] = captcha_logintoken
         payload['url'] = captcha_url
-        payload['logintoken_audio'] = captcha_logintoken_audio
+        payload['audio'] = captcha_logintoken_audio
         payload['url_audio'] = captcha_url_audio
 
-        return self.post(passwd_challenge_url, data=payload)
+        response = self.post(passwd_challenge_url, data=payload)
+        print(response.content)
+        return response
 
     def handle_sk(self, sess):
         response_page = BeautifulSoup(sess.text, 'html.parser')
