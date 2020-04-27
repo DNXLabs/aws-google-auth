@@ -407,7 +407,7 @@ class Google:
         newPayload = {}
 
         test_response_page = BeautifulSoup(response.text, 'html.parser')
-        print(test_response_page)
+
         challengeId = test_response_page.find('input', {
             'name': 'challengeId'
         }).get('value')
