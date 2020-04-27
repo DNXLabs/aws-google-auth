@@ -367,8 +367,7 @@ class Google:
         captcha_logintoken = captcha_container.find('input', {'id': 'identifier-token'}).get('value')
         captcha_img = captcha_container.find('div', {'class': 'captcha-img'})
         captcha_url = "https://accounts.google.com" + captcha_img.find('img').get('src')
-        captcha_logintoken_audio = None
-        captcha_url_audio = None
+        captcha_logintoken_audio = ''
 
         open_image = True
 
@@ -393,16 +392,55 @@ class Google:
         except NameError:
             captcha_input = input("Captcha (case insensitive): ") or None
 
+        
         # Update the payload
         payload['identifier-captcha-input'] = captcha_input
-        payload['identifier-token'] = captcha_logintoken
-        payload['url'] = captcha_url
-        payload['audio'] = captcha_logintoken_audio
-        payload['url_audio'] = captcha_url_audio
+        payload['identifiertoken'] = captcha_logintoken
+        payload['identifiertoken_audio'] = captcha_logintoken_audio
+        payload['checkedDomains'] = 'youtube'
+        payload['checkConnection'] = 'youtube:574:1'
+        payload['Email'] = self.config.username
+        payload['TrustDevice'] = "on"
 
         response = self.post(passwd_challenge_url, data=payload)
-        print(response.content)
-        return response
+
+        newPayload = {}
+
+        test_response_page = BeautifulSoup(response.text, 'html.parser')
+        print(test_response_page)
+        challengeId = test_response_page.find('input', {
+            'name': 'challengeId'
+        }).get('value')
+        challengeType = test_response_page.find('input', {
+            'name': 'challengeType'
+        }).get('value')
+        tl = test_response_page.find('input', {
+            'name': 'TL'
+        }).get('value')
+        gxf = test_response_page.find('input', {
+            'name': 'gxf'
+        }).get('value')
+
+        
+        newPayload['challengeId'] = challengeId
+        newPayload['challengeType'] = challengeType
+        newPayload['continue'] = payload['continue']
+        newPayload['ltmpl'] = payload['ltmpl']
+        newPayload['scc'] = payload['scc']
+        newPayload['sarp'] = payload['sarp']
+        newPayload['checkedDomains'] = payload['checkedDomains']
+        newPayload['checkConnection'] = payload['checkConnection']
+        newPayload['pstMsg'] = payload['pstMsg']
+        newPayload['oauth'] = payload['oauth']
+        newPayload['TL'] = tl
+        newPayload['gxf'] = gxf
+        newPayload['Email'] = payload['Email']
+        newPayload['Passwd'] = payload['Passwd']
+        newPayload['TrustDevice'] = "on"
+        
+        test = self.post(response.url, data=newPayload)
+
+        return test
 
     def handle_sk(self, sess):
         response_page = BeautifulSoup(sess.text, 'html.parser')
